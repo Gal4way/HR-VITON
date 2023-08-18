@@ -216,7 +216,7 @@ def test(opt, test_loader, tocg, generator):
                 warped_cloth = warped_cloth * warped_clothmask + torch.ones_like(warped_cloth) * (1-warped_clothmask)
             
 
-            output = generator(torch.cat((agnostic, densepose, warped_cloth), dim=1), parse)
+            # output = generator(torch.cat((agnostic, densepose, warped_cloth), dim=1), parse)
             # visualize
             unpaired_names = []
             # for i in range(shape[0]):
@@ -233,7 +233,7 @@ def test(opt, test_loader, tocg, generator):
             # save_images(output, unpaired_names, output_dir)
 
             # save warped_clothes
-            save_image(warped_cloth, os.path.join(output_dir, inputs['c_name']['paired'][0].split('.')[0] + '.jpg'))
+            save_image(warped_cloth, os.path.join(output_dir, inputs['c_name'][opt.datasetting][0].split('.')[0] + '.jpg'))
                 
             num += shape[0]
             print(num)
