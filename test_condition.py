@@ -21,6 +21,8 @@ def get_opt():
     parser.add_argument('-j', '--workers', type=int, default=4)
     parser.add_argument('-b', '--batch-size', type=int, default=8)
     parser.add_argument('--fp16', action='store_true', help='use amp')
+    # Cuda availability
+    parser.add_argument('--cuda',default=False, help='cuda or cpu')
 
     parser.add_argument("--dataroot", default="./data/zalando-hd-resize")
     parser.add_argument("--datamode", default="test")
@@ -33,7 +35,8 @@ def get_opt():
     parser.add_argument('--checkpoint_dir', type=str, default='checkpoints', help='save checkpoint infos')
     parser.add_argument('--tocg_checkpoint', type=str, default='', help='tocg checkpoint')
     parser.add_argument('--D_checkpoint', type=str, default='', help='D checkpoint')
-    
+    parser.add_argument('--output_path', type=str, default='', help='output path for warped clothes')
+
     parser.add_argument("--tensorboard_count", type=int, default=100)
     parser.add_argument("--shuffle", action='store_true', help='shuffle input data')
     parser.add_argument("--semantic_nc", type=int, default=13)
@@ -70,8 +73,7 @@ def test(opt, test_loader, board, tocg, D=None):
         D.cuda()
         D.eval()
     
-    os.makedirs(os.path.join('./output', opt.tocg_checkpoint.split('/')[-2], opt.tocg_checkpoint.split('/')[-1],
-                             opt.datamode, opt.datasetting, 'multi-task'), exist_ok=True)
+    os.makedirs(os.path.join(opt.output_path), exist_ok=True)
     num = 0
     iter_start_time = time.time()
     if D is not None:
@@ -100,7 +102,7 @@ def test(opt, test_loader, board, tocg, D=None):
             input2 = torch.cat([parse_agnostic, densepose], 1)
 
             # forward
-            flow_list, fake_segmap, warped_cloth_paired, warped_clothmask_paired = tocg(input1, input2)
+            flow_list, fake_segmap, warped_cloth_paired, warped_clothmask_paired = tocg(opt, input1, input2)
             
             # warped cloth mask one hot 
             warped_cm_onehot = torch.FloatTensor((warped_clothmask_paired.detach().cpu().numpy() > 0.5).astype(np.float)).cuda()
@@ -133,14 +135,14 @@ def test(opt, test_loader, board, tocg, D=None):
             misalign[misalign < 0.0] = 0.0
         
         for i in range(c_paired.shape[0]):
-            grid = make_grid([(c_paired[i].cpu() / 2 + 0.5), (cm_paired[i].cpu()).expand(3, -1, -1), visualize_segmap(parse_agnostic.cpu(), batch=i), ((densepose.cpu()[i]+1)/2),
-                            (im_c[i].cpu() / 2 + 0.5), parse_cloth_mask[i].cpu().expand(3, -1, -1), (warped_cloth_paired[i].cpu().detach() / 2 + 0.5), (warped_cm_onehot[i].cpu().detach()).expand(3, -1, -1),
-                            visualize_segmap(label.cpu(), batch=i), visualize_segmap(fake_segmap.cpu(), batch=i), (im[i]/2 +0.5), (misalign[i].cpu().detach()).expand(3, -1, -1)],
-                                nrow=4)
-            save_image(grid, os.path.join('./output', opt.tocg_checkpoint.split('/')[-2], opt.tocg_checkpoint.split('/')[-1],
-                             opt.datamode, opt.datasetting, 'multi-task',
-                             (inputs['c_name']['paired'][i].split('.')[0] + '_' +
-                              inputs['c_name']['unpaired'][i].split('.')[0] + '.png')))
+            # grid = make_grid([(c_paired[i].cpu() / 2 + 0.5), (cm_paired[i].cpu()).expand(3, -1, -1), visualize_segmap(parse_agnostic.cpu(), batch=i), ((densepose.cpu()[i]+1)/2),
+            #                 (im_c[i].cpu() / 2 + 0.5), parse_cloth_mask[i].cpu().expand(3, -1, -1), (warped_cloth_paired[i].cpu().detach() / 2 + 0.5), (warped_cm_onehot[i].cpu().detach()).expand(3, -1, -1),
+            #                 visualize_segmap(label.cpu(), batch=i), visualize_segmap(fake_segmap.cpu(), batch=i), (im[i]/2 +0.5), (misalign[i].cpu().detach()).expand(3, -1, -1)],
+            #                     nrow=4)
+            # save_image(grid, os.path.join(opt.output_path,
+            #                  (inputs['c_name']['paired'][i].split('.')[0]+'.png')))
+            save_image(warped_cloth_paired[i].cpu().detach() / 2 + 0.5, os.path.join(opt.output_path,
+                              (inputs['c_name']['paired'][i].split('.')[0]+'.jpg')))
         num += c_paired.shape[0]
         print(num)
     if D is not None:
@@ -180,7 +182,7 @@ def main():
     else:
         D = None
     # Load Checkpoint
-    load_checkpoint(tocg, opt.tocg_checkpoint)
+    load_checkpoint(tocg, opt.tocg_checkpoint, opt)
     if not opt.D_checkpoint == '' and os.path.exists(opt.D_checkpoint):
         load_checkpoint(D, opt.D_checkpoint)
     # Train

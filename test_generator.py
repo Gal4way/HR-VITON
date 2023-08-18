@@ -219,18 +219,21 @@ def test(opt, test_loader, tocg, generator):
             output = generator(torch.cat((agnostic, densepose, warped_cloth), dim=1), parse)
             # visualize
             unpaired_names = []
-            for i in range(shape[0]):
-                grid = make_image_grid([(clothes[i].cpu() / 2 + 0.5), (pre_clothes_mask[i].cpu()).expand(3, -1, -1), visualize_segmap(parse_agnostic.cpu(), batch=i), ((densepose.cpu()[i]+1)/2),
-                                        (warped_cloth[i].cpu().detach() / 2 + 0.5), (warped_clothmask[i].cpu().detach()).expand(3, -1, -1), visualize_segmap(fake_parse_gauss.cpu(), batch=i),
-                                        (pose_map[i].cpu()/2 +0.5), (warped_cloth[i].cpu()/2 + 0.5), (agnostic[i].cpu()/2 + 0.5),
-                                        (im[i]/2 +0.5), (output[i].cpu()/2 +0.5)],
-                                        nrow=4)
-                unpaired_name = (inputs['c_name']['paired'][i].split('.')[0] + '_' + inputs['c_name'][opt.datasetting][i].split('.')[0] + '.png')
-                save_image(grid, os.path.join(grid_dir, unpaired_name))
-                unpaired_names.append(unpaired_name)
+            # for i in range(shape[0]):
+            #     grid = make_image_grid([(clothes[i].cpu() / 2 + 0.5), (pre_clothes_mask[i].cpu()).expand(3, -1, -1), visualize_segmap(parse_agnostic.cpu(), batch=i), ((densepose.cpu()[i]+1)/2),
+            #                             (warped_cloth[i].cpu().detach() / 2 + 0.5), (warped_clothmask[i].cpu().detach()).expand(3, -1, -1), visualize_segmap(fake_parse_gauss.cpu(), batch=i),
+            #                             (pose_map[i].cpu()/2 +0.5), (warped_cloth[i].cpu()/2 + 0.5), (agnostic[i].cpu()/2 + 0.5),
+            #                             (im[i]/2 +0.5), (output[i].cpu()/2 +0.5)],
+            #                             nrow=4)
+            #     unpaired_name = (inputs['c_name']['paired'][i].split('.')[0] + '_' + inputs['c_name'][opt.datasetting][i].split('.')[0] + '.png')
+            #     save_image(grid, os.path.join(grid_dir, unpaired_name))
+            #     unpaired_names.append(unpaired_name)
                 
-            # save output
-            save_images(output, unpaired_names, output_dir)
+            # # save output
+            # save_images(output, unpaired_names, output_dir)
+
+            # save warped_clothes
+            save_image(warped_cloth, os.path.join(output_dir, inputs['c_name']['paired'][0].split('.')[0] + '.jpg'))
                 
             num += shape[0]
             print(num)
